@@ -1,4 +1,5 @@
 import Logo from './Logo';
+import { SITE_CONFIG } from '@/lib/siteConfig';
 
 function FacebookIcon({ className = "w-5 h-5" }) {
   return (
@@ -24,27 +25,27 @@ function WhatsAppIcon({ className = "w-5 h-5" }) {
   );
 }
 
-export default function Footer({ settings }) {
-  const social = settings?.socialLinks || {};
+export default function Footer() {
+  const social = SITE_CONFIG.socialLinks;
 
   const socialChannels = [
     {
       name: 'Facebook',
-      url: social.facebook || 'https://www.facebook.com/profile.php?id=61592216920291',
+      url: social.facebook,
       icon: FacebookIcon,
       bgColor: 'hover:bg-[#1877F2] hover:text-white',
       badge: 'Follow us on Facebook',
     },
     {
       name: 'Instagram',
-      url: social.instagram || 'https://www.instagram.com/motorsssg?igsi=MXU2cm8yZG1rbTdiNg==',
+      url: social.instagram,
       icon: InstagramIcon,
       bgColor: 'hover:bg-gradient-to-tr hover:from-[#f09433] hover:via-[#dc2743] hover:to-[#bc1888] hover:text-white',
       badge: 'Follow us on Instagram',
     },
     {
       name: 'WhatsApp',
-      url: social.whatsapp || 'https://wa.me/971506988527',
+      url: social.whatsapp,
       icon: WhatsAppIcon,
       bgColor: 'hover:bg-[#25D366] hover:text-white',
       badge: 'Chat on WhatsApp',

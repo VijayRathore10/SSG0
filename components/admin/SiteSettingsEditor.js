@@ -1,43 +1,20 @@
 'use client';
 
 import React, { useState } from 'react';
-import ImageUploadButton from './ImageUploadButton';
 import ImageDropzone from './ImageDropzone';
-import { Save, Plus, Trash2, Image as ImageIcon, CheckCircle2 } from 'lucide-react';
+import { Save, Trash2, CheckCircle2, Info, Eye } from 'lucide-react';
+import { SITE_CONFIG } from '@/lib/siteConfig';
 
 export default function SiteSettingsEditor({ settings = {}, onSave }) {
-  const [tagline, setTagline] = useState(settings?.tagline || '');
-  const [aboutText, setAboutText] = useState(settings?.aboutText || '');
-  const [contactEmail, setContactEmail] = useState(settings?.contactEmail || '');
-  const [contactPhone, setContactPhone] = useState(settings?.contactPhone || '');
-  const [address, setAddress] = useState(settings?.address || '');
-
-  // Social Links
-  const [whatsapp, setWhatsapp] = useState(settings?.socialLinks?.whatsapp || '');
-  const [facebook, setFacebook] = useState(settings?.socialLinks?.facebook || '');
-  const [instagram, setInstagram] = useState(settings?.socialLinks?.instagram || '');
-  const [linkedin, setLinkedin] = useState(settings?.socialLinks?.linkedin || '');
-
-  // Hero Slider Images
+  // Hero Slider Images (only field sourced from & persisted to Firestore)
   const [heroImages, setHeroImages] = useState(
-    settings?.heroImages || [
-      'https://picsum.photos/seed/ssg-heavy-haulage-1610/1920/1200',
-      'https://picsum.photos/seed/ssg-machinery-1610/1920/1200',
-      'https://picsum.photos/seed/ssg-transit-1610/1920/1200',
-      'https://picsum.photos/seed/ssg-agricultural-1610/1920/1200',
-    ]
+    Array.isArray(settings?.heroImages) && settings.heroImages.length > 0
+      ? settings.heroImages
+      : SITE_CONFIG.defaultHeroImages
   );
-  const [newHeroImageUrl, setNewHeroImageUrl] = useState('');
 
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
-
-  const handleAddHeroImage = (e) => {
-    e.preventDefault();
-    if (!newHeroImageUrl.trim()) return;
-    setHeroImages([...heroImages, newHeroImageUrl.trim()]);
-    setNewHeroImageUrl('');
-  };
 
   const handleRemoveHeroImage = (idx) => {
     setHeroImages(heroImages.filter((_, i) => i !== idx));
@@ -49,17 +26,6 @@ export default function SiteSettingsEditor({ settings = {}, onSave }) {
     setSavedSuccess(false);
 
     const payload = {
-      tagline: tagline.trim(),
-      aboutText: aboutText.trim(),
-      contactEmail: contactEmail.trim(),
-      contactPhone: contactPhone.trim(),
-      address: address.trim(),
-      socialLinks: {
-        whatsapp: whatsapp.trim(),
-        facebook: facebook.trim(),
-        instagram: instagram.trim(),
-        linkedin: linkedin.trim(),
-      },
       heroImages: heroImages.filter(Boolean),
     };
 
@@ -77,7 +43,7 @@ export default function SiteSettingsEditor({ settings = {}, onSave }) {
         setTimeout(() => setSavedSuccess(false), 3500);
       }
     } catch (err) {
-      alert('Failed to save settings: ' + err.message);
+      alert('Failed to save hero slider settings: ' + err.message);
     } finally {
       setSaving(false);
     }
@@ -88,18 +54,30 @@ export default function SiteSettingsEditor({ settings = {}, onSave }) {
       {savedSuccess && (
         <div className="p-4 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4" />
-          <span>All site settings and hero slides saved successfully!</span>
+          <span>Hero Slider photography saved to Firebase successfully!</span>
         </div>
       )}
+
+      {/* Info notice about static code configuration */}
+      <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs flex items-start gap-3">
+        <Info className="w-5 h-5 shrink-0 text-blue-400 mt-0.5" />
+        <div className="leading-relaxed">
+          <p className="font-bold text-white mb-0.5">Database Scope: Hero Slider Only</p>
+          <p>
+            In accordance with your architecture, all company details (email, phone, address, social links, taglines) are hardcoded directly in the codebase (<code className="px-1.5 py-0.5 bg-blue-950/70 rounded text-blue-200">lib/siteConfig.js</code>) and are not fetched from the database.
+            Only the <strong>Hero Slider background slides</strong> below are stored in and sourced from Firebase.
+          </p>
+        </div>
+      </div>
 
       {/* Hero Section Photography */}
       <div className="bg-[#131D2F] border border-slate-800 rounded-2xl p-6 space-y-4 shadow-lg">
         <div>
           <h3 className="text-sm font-bold uppercase tracking-wider text-white">
-            1. Hero Slider Photography (16:10 Cinematic Slides)
+            Homepage Hero Slider Photography (16:10 Cinematic Slides)
           </h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            Background photography rotating at the top of the homepage.
+            These images rotate in the background at the top of the homepage hero section.
           </p>
         </div>
 
@@ -118,7 +96,7 @@ export default function SiteSettingsEditor({ settings = {}, onSave }) {
               className="relative aspect-[16/10] rounded-xl overflow-hidden border border-slate-800 bg-slate-950 group"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt={`Hero ${i + 1}`} className="w-full h-full object-cover" />
+              <img src={url} alt={`Hero slide ${i + 1}`} className="w-full h-full object-cover" />
               <button
                 type="button"
                 onClick={() => handleRemoveHeroImage(i)}
@@ -133,174 +111,58 @@ export default function SiteSettingsEditor({ settings = {}, onSave }) {
             </div>
           ))}
         </div>
-      </div>
 
-      {/* Branding & Taglines */}
-      <div className="bg-[#131D2F] border border-slate-800 rounded-2xl p-6 space-y-4 shadow-lg">
-        <div>
-          <h3 className="text-sm font-bold uppercase tracking-wider text-white">
-            2. Company Taglines & About Description
-          </h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Displayed on hero banners and the About Us section.
-          </p>
-        </div>
-
-        <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
-            Hero Tagline
-          </label>
-          <input
-            type="text"
-            value={tagline}
-            onChange={(e) => setTagline(e.target.value)}
-            placeholder="COMMERCIAL VEHICLES & FLEET EXPORT"
-            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-amber-400"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
-            About Company Overview
-          </label>
-          <textarea
-            rows={3}
-            value={aboutText}
-            onChange={(e) => setAboutText(e.target.value)}
-            placeholder="NIK EXPORTS is India’s premier commercial vehicle export partner..."
-            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-amber-400"
-          />
+        <div className="pt-2">
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-colors shadow-lg cursor-pointer disabled:opacity-50"
+          >
+            <Save className="w-4 h-4" />
+            <span>{saving ? 'Saving to Firebase...' : 'Save Hero Slides'}</span>
+          </button>
         </div>
       </div>
 
-      {/* Contact & Registered Office */}
-      <div className="bg-[#131D2F] border border-slate-800 rounded-2xl p-6 space-y-4 shadow-lg">
-        <div>
-          <h3 className="text-sm font-bold uppercase tracking-wider text-white">
-            3. Contact Information & Registered Office
-          </h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Shown on header, footer, inquiry popups, and contact page.
-          </p>
+      {/* Read-only reference of the hardcoded Code Configuration */}
+      <div className="bg-[#131D2F] border border-slate-800/60 rounded-2xl p-6 space-y-4 opacity-80">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Eye className="w-4 h-4 text-slate-400" />
+            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300">
+              Code Configuration Reference (lib/siteConfig.js)
+            </h3>
+          </div>
+          <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-slate-800 text-slate-400">
+            Hardcoded in Code
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
-              Contact Email
-            </label>
-            <input
-              type="email"
-              value={contactEmail}
-              onChange={(e) => setContactEmail(e.target.value)}
-              placeholder="export@nikexports.com"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-amber-400"
-            />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1">
+            <span className="text-slate-500 uppercase text-[10px] font-bold block">Company / Brand</span>
+            <p className="font-semibold text-white">{SITE_CONFIG.companyName}</p>
+            <p className="text-amber-400 font-mono text-[11px]">{SITE_CONFIG.brandName}</p>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
-              Contact Phone / WhatsApp
-            </label>
-            <input
-              type="text"
-              value={contactPhone}
-              onChange={(e) => setContactPhone(e.target.value)}
-              placeholder="+971 50 698 8527"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-amber-400"
-            />
+          <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1">
+            <span className="text-slate-500 uppercase text-[10px] font-bold block">Contact Email & Phone</span>
+            <p className="font-semibold text-white">{SITE_CONFIG.contactEmail}</p>
+            <p className="text-slate-300">{SITE_CONFIG.contactPhone}</p>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1">
+            <span className="text-slate-500 uppercase text-[10px] font-bold block">WhatsApp & Social Links</span>
+            <p className="text-emerald-400 truncate">{SITE_CONFIG.socialLinks.whatsapp}</p>
+            <p className="text-slate-400 truncate">{SITE_CONFIG.socialLinks.facebook}</p>
+            <p className="text-slate-400 truncate">{SITE_CONFIG.socialLinks.instagram}</p>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1">
+            <span className="text-slate-500 uppercase text-[10px] font-bold block">Office Address</span>
+            <p className="text-slate-300 text-[11px] leading-relaxed">{SITE_CONFIG.address}</p>
           </div>
         </div>
-
-        <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
-            Registered Office Address
-          </label>
-          <textarea
-            rows={2}
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="SevenSeas Global Trading FZ LLC, Compass Building, Al Shohada Road, Ras Al Khaimah, UAE"
-            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:outline-none focus:border-amber-400"
-          />
-        </div>
-      </div>
-
-      {/* Social Media Links */}
-      <div className="bg-[#131D2F] border border-slate-800 rounded-2xl p-6 space-y-4 shadow-lg">
-        <div>
-          <h3 className="text-sm font-bold uppercase tracking-wider text-white">
-            4. Social Media & Direct Chat Links
-          </h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Connected to social buttons in the footer and contact sections.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
-              WhatsApp Link
-            </label>
-            <input
-              type="text"
-              value={whatsapp}
-              onChange={(e) => setWhatsapp(e.target.value)}
-              placeholder="https://wa.me/971506988527"
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white font-mono focus:outline-none focus:border-amber-400"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
-              Facebook Page URL
-            </label>
-            <input
-              type="text"
-              value={facebook}
-              onChange={(e) => setFacebook(e.target.value)}
-              placeholder="https://facebook.com/..."
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white font-mono focus:outline-none focus:border-amber-400"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
-              Instagram Profile URL
-            </label>
-            <input
-              type="text"
-              value={instagram}
-              onChange={(e) => setInstagram(e.target.value)}
-              placeholder="https://instagram.com/..."
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white font-mono focus:outline-none focus:border-amber-400"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1">
-              LinkedIn Profile URL
-            </label>
-            <input
-              type="text"
-              value={linkedin}
-              onChange={(e) => setLinkedin(e.target.value)}
-              placeholder="https://linkedin.com/company/..."
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white font-mono focus:outline-none focus:border-amber-400"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="pt-2">
-        <button
-          type="submit"
-          disabled={saving}
-          className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-colors shadow-lg cursor-pointer disabled:opacity-50"
-        >
-          <Save className="w-4 h-4" />
-          <span>{saving ? 'Saving Settings...' : 'Save All Settings'}</span>
-        </button>
       </div>
     </form>
   );

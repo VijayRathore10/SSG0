@@ -47,15 +47,9 @@
     },
     "SiteSettings": {
       "title": "SiteSettings",
-      "description": "Global website contact details and hero slider",
+      "description": "Hero slider photography stored in Firebase",
       "type": "object",
       "properties": {
-        "tagline": { "type": "string" },
-        "aboutText": { "type": "string" },
-        "contactEmail": { "type": "string" },
-        "contactPhone": { "type": "string" },
-        "address": { "type": "string" },
-        "socialLinks": { "type": "object" },
         "heroImages": { "type": "array" }
       }
     },

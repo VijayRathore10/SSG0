@@ -626,7 +626,7 @@ export default function AdminPage() {
               }`}
             >
               <Settings className="w-4 h-4" />
-              <span>Site Settings</span>
+              <span>Hero Slider</span>
             </button>
           </nav>
 
@@ -1148,10 +1148,10 @@ export default function AdminPage() {
             <div className="space-y-6">
               <div className="pb-4 border-b border-slate-800">
                 <h2 className="text-xl font-bold text-white uppercase tracking-tight">
-                  Website Settings & Hero Photography
+                  Hero Slider Photography
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Update hero slider slides, taglines, company contact details, and social links.
+                  Manage 16:10 cinematic background slides rotating at the top of the homepage.
                 </p>
               </div>
 

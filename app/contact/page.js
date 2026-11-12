@@ -1,18 +1,16 @@
 import InquiryForm from '@/components/InquiryForm';
-import { getSiteSettings } from '@/lib/data';
+import { SITE_CONFIG } from '@/lib/siteConfig';
 import { Mail, Phone, MapPin, Clock, ShieldCheck } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export const metadata = {
-
   title: 'Request a Quote | SSG MOTORS',
   description: 'Request a customized FOB/CIF export quotation for commercial vehicles and machinery.',
 };
 
-export default async function ContactPage() {
-  const settings = await getSiteSettings();
+export default function ContactPage() {
 
   return (
     <section className="mx-auto max-w-7xl px-5 md:px-8 pt-28 md:pt-32 pb-20">
@@ -40,10 +38,10 @@ export default async function ContactPage() {
                     Export Sales Desk
                   </span>
                   <a
-                    href={`mailto:${settings?.contactEmail || 'info@ssgmotors.com'}`}
+                    href={`mailto:${SITE_CONFIG.contactEmail}`}
                     className="font-medium text-[#102035] hover:text-[#B69255] transition-colors"
                   >
-                    {settings?.contactEmail || 'info@ssgmotors.com'}
+                    {SITE_CONFIG.contactEmail}
                   </a>
                 </div>
               </div>
@@ -57,10 +55,10 @@ export default async function ContactPage() {
                     Phone / WhatsApp Direct
                   </span>
                   <a
-                    href={`tel:${settings?.contactPhone || '+971506988527'}`}
+                    href={`tel:${SITE_CONFIG.rawPhone}`}
                     className="font-medium text-[#102035] hover:text-[#B69255] transition-colors"
                   >
-                    {settings?.contactPhone || '+971 50 698 8527'}
+                    {SITE_CONFIG.contactPhone}
                   </a>
                 </div>
               </div>
@@ -74,8 +72,7 @@ export default async function ContactPage() {
                     Headquarters &amp; Export Office
                   </span>
                   <p className="font-medium text-[#102035] text-sm leading-relaxed">
-                    {settings?.address ||
-                      'SevenSeas Global Trading FZ LLC, Compass Building, Al Shohada Road, AL Hamra Industrial Zone-FZ, Ras Al Khaimah, United Arab Emirates'}
+                    {SITE_CONFIG.address}
                   </p>
                 </div>
               </div>

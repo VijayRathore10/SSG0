@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Logo from './Logo';
 import { ArrowRight } from 'lucide-react';
+import { SITE_CONFIG } from '@/lib/siteConfig';
 
 function WhatsAppIcon({ className = "w-4 h-4" }) {
   return (
@@ -14,14 +15,10 @@ function WhatsAppIcon({ className = "w-4 h-4" }) {
   );
 }
 
-export default function Header({ settings }) {
+export default function Header() {
   const pathname = usePathname();
   const isHomePage = pathname === '/';
-
-  const rawWhatsapp = settings?.socialLinks?.whatsapp;
-  const whatsappUrl = rawWhatsapp
-    ? (rawWhatsapp.startsWith('http') ? rawWhatsapp : `https://wa.me/${rawWhatsapp.replace(/[^0-9]/g, '')}`)
-    : 'https://wa.me/971506988527';
+  const whatsappUrl = SITE_CONFIG.whatsappUrl;
 
   // scrollProgress ranges from 0 (at top of page) to 1 (at or past 50% scroll threshold)
   const [scrollProgress, setScrollProgress] = useState(isHomePage ? 0 : 1);

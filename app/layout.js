@@ -1,7 +1,6 @@
 import './globals.css';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { getSiteSettings } from '@/lib/data';
 import { Inter, Barlow_Condensed, IBM_Plex_Mono } from 'next/font/google';
 
 const inter = Inter({
@@ -28,24 +27,21 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export const metadata = {
-  title: 'Nik Exports | Commercial Vehicles & Equipment Export',
+  title: 'SSG MOTORS | Commercial Vehicles & Equipment Export',
   description:
-    'Nik Exports — Commercial vehicles & equipment export portal for trucks, buses, machinery, and special application vehicles.',
+    'SSG MOTORS — Premier commercial vehicles & equipment export portal for heavy trucks, transit buses, machinery, and agricultural equipment.',
 };
 
-
-export default async function RootLayout({ children }) {
-  const settings = await getSiteSettings();
-
+export default function RootLayout({ children }) {
   return (
     <html
       lang="en"
       className={`${inter.variable} ${barlowCondensed.variable} ${ibmPlexMono.variable}`}
     >
       <body className="antialiased min-h-screen flex flex-col bg-[#F3F1EA] text-[#1A1F26]" suppressHydrationWarning>
-        <Header settings={settings} />
+        <Header />
         <main className="flex-1">{children}</main>
-        <Footer settings={settings} />
+        <Footer />
       </body>
     </html>
   );

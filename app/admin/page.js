@@ -502,7 +502,7 @@ export default function AdminPage() {
               <Lock className="w-7 h-7" />
             </div>
             <h1 className="text-2xl font-bold font-display uppercase tracking-tight text-white">
-              Nik Exports Admin
+              Admin
             </h1>
             <p className="text-xs text-slate-400 mt-1">
               Local Fleet & Specifications Management Portal

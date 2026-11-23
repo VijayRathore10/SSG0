@@ -1,38 +1,46 @@
 import { getDbProducts, saveDbProduct, deleteDbProduct } from '@/lib/db';
-import { cookies } from 'next/headers';
+import { isAdminAuthenticated, unauthorizedResponse } from '@/lib/adminAuth';
 
-async function checkAuth() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('nik_admin_auth');
-  return token?.value === 'nik-authorized-session-token-v1';
-}
+export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request) {
+  if (!(await isAdminAuthenticated(request))) {
+    return unauthorizedResponse();
+  }
+
   const products = await getDbProducts();
-  return Response.json(products);
+  return Response.json(products, { headers: { 'Cache-Control': 'no-store' } });
 }
 
-export async function POST(request) {
-  if (!(await checkAuth())) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+async function handleUpsert(request) {
+  if (!(await isAdminAuthenticated(request))) {
+    return unauthorizedResponse();
   }
 
   try {
     const productData = await request.json();
-    if (!productData.name) {
+    if (!productData?.name) {
       return Response.json({ error: 'Product name is required' }, { status: 400 });
     }
 
     const saved = await saveDbProduct(productData);
-    return Response.json(saved);
+    return Response.json(saved, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err) {
     return Response.json({ error: err.message || 'Failed to save product' }, { status: 500 });
   }
 }
 
+export async function POST(request) {
+  return handleUpsert(request);
+}
+
+export async function PUT(request) {
+  return handleUpsert(request);
+}
+
 export async function DELETE(request) {
-  if (!(await checkAuth())) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!(await isAdminAuthenticated(request))) {
+    return unauthorizedResponse();
   }
 
   try {
@@ -43,7 +51,7 @@ export async function DELETE(request) {
     }
 
     await deleteDbProduct(id);
-    return Response.json({ success: true });
+    return Response.json({ success: true }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err) {
     return Response.json({ error: err.message || 'Failed to delete product' }, { status: 500 });
   }

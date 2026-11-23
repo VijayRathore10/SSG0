@@ -12,8 +12,6 @@ import {
   Image as ImageIcon,
 } from 'lucide-react';
 
-const ADMIN_TOKEN = 'nik-authorized-session-token-v1';
-
 // Safe in-browser image optimization: scales down 10MB+ images to <=1920px WebP
 async function optimizeImageForUpload(file, maxWidth = 1920, quality = 0.88) {
   // If SVG or GIF, preserve exact format
@@ -117,7 +115,7 @@ export async function uploadSingleOrMultipleFiles(fileList, onProgress) {
     const res = await fetch('/api/admin/upload', {
       method: 'POST',
       headers: {
-        'x-admin-token': ADMIN_TOKEN,
+        'X-Requested-With': 'XMLHttpRequest',
       },
       credentials: 'include',
       body: formData,

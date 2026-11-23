@@ -1,47 +1,90 @@
 import { cookies } from 'next/headers';
+import {
+  AUTH_COOKIE,
+  createAdminSessionToken,
+  getAdminPassword,
+  getAdminSessionSecret,
+  getSessionCookieOptions,
+  isAdminAuthenticated,
+  verifyAdminPassword,
+} from '@/lib/adminAuth';
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
-const AUTH_COOKIE = 'nik_admin_auth';
-const TOKEN_VALUE = 'nik-authorized-session-token-v1';
+export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
   try {
-    const { password } = await request.json();
-
-    if (password === ADMIN_PASSWORD) {
-      const cookieStore = await cookies();
-      cookieStore.set(AUTH_COOKIE, TOKEN_VALUE, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-      });
-      return Response.json({ success: true });
+    const configuredPassword = getAdminPassword();
+    if (!configuredPassword) {
+      return Response.json(
+        { error: 'Admin authentication is not configured. Set ADMIN_PASSWORD on the server.' },
+        { status: 503, headers: { 'Cache-Control': 'no-store' } }
+      );
     }
 
-    return Response.json({ error: 'Incorrect administrator password' }, { status: 401 });
-  } catch (err) {
-    return Response.json({ error: 'Authentication failed' }, { status: 500 });
+    const sessionSecret = getAdminSessionSecret();
+    if (!sessionSecret) {
+      return Response.json(
+        { error: 'Admin session signing is not configured. Set ADMIN_SESSION_SECRET on the server.' },
+        { status: 503, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return Response.json(
+        { error: 'Invalid request body' },
+        { status: 400, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+
+    const password = typeof body?.password === 'string' ? body.password : '';
+
+    if (!verifyAdminPassword(password)) {
+      return Response.json(
+        { error: 'Incorrect administrator password' },
+        { status: 401, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+
+    const sessionToken = createAdminSessionToken();
+    if (!sessionToken) {
+      return Response.json(
+        { error: 'Failed to create admin session' },
+        { status: 500, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+
+    const cookieStore = await cookies();
+    cookieStore.set(AUTH_COOKIE, sessionToken, getSessionCookieOptions());
+
+    return Response.json(
+      { success: true },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
+  } catch {
+    return Response.json(
+      { error: 'Authentication failed' },
+      { status: 500, headers: { 'Cache-Control': 'no-store' } }
+    );
   }
 }
 
 export async function GET(request) {
-  const headerToken =
-    request.headers.get('x-admin-token') ||
-    request.headers.get('authorization')?.replace('Bearer ', '');
-  if (headerToken === TOKEN_VALUE) {
-    return Response.json({ authenticated: true });
-  }
-
-  const cookieStore = await cookies();
-  const token = cookieStore.get(AUTH_COOKIE);
-  const isAuthenticated = token?.value === TOKEN_VALUE;
-  return Response.json({ authenticated: isAuthenticated });
+  const authenticated = await isAdminAuthenticated(request);
+  return Response.json(
+    { authenticated },
+    { headers: { 'Cache-Control': 'no-store' } }
+  );
 }
 
 export async function DELETE() {
   const cookieStore = await cookies();
+  cookieStore.set(AUTH_COOKIE, '', getSessionCookieOptions(0));
   cookieStore.delete(AUTH_COOKIE);
-  return Response.json({ success: true });
+  return Response.json(
+    { success: true },
+    { headers: { 'Cache-Control': 'no-store' } }
+  );
 }

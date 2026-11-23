@@ -1,53 +1,65 @@
-import { cookies } from 'next/headers';
 import fs from 'fs';
 import path from 'path';
 import { db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { isAdminAuthenticated, unauthorizedResponse } from '@/lib/adminAuth';
 
-const AUTH_COOKIE = 'nik_admin_auth';
-const TOKEN_VALUE = 'nik-authorized-session-token-v1';
 const CHUNK_SIZE = 650 * 1024; // 650KB chunks for Firestore 1MB doc limit safety
+const MAX_FILE_BYTES = 15 * 1024 * 1024; // 15MB safety limit per upload
+const ALLOWED_IMAGE_EXTENSIONS = new Set([
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.webp',
+  '.gif',
+  '.svg',
+  '.avif',
+  '.heic',
+]);
 
-async function checkAuth(request) {
-  try {
-    const headerToken =
-      request.headers.get('x-admin-token') ||
-      request.headers.get('authorization')?.replace('Bearer ', '');
-    if (headerToken === TOKEN_VALUE) {
-      return true;
-    }
-
-    const cookieStore = await cookies();
-    const token = cookieStore.get(AUTH_COOKIE);
-    if (token?.value === TOKEN_VALUE) {
-      return true;
-    }
-  } catch (err) {
-    console.warn('Auth check warning:', err?.message || err);
+function normalizeExtension(rawExt, mime = '') {
+  const lower = (rawExt || '').toLowerCase();
+  if (ALLOWED_IMAGE_EXTENSIONS.has(lower)) {
+    return lower;
   }
-  return false;
+  if (mime.includes('jpeg') || mime.includes('jpg')) return '.jpg';
+  if (mime.includes('png')) return '.png';
+  if (mime.includes('webp')) return '.webp';
+  if (mime.includes('gif')) return '.gif';
+  if (mime.includes('svg')) return '.svg';
+  if (mime.includes('avif')) return '.avif';
+  if (mime.includes('heic')) return '.heic';
+  return '.jpg';
 }
 
 // Safely write to local disk without crashing on read-only filesystems (Cloud Run EROFS)
 function safeSaveToDisk(filename, buffer) {
+  const safeName = path.basename(filename);
+
   // 1. Write to /tmp/uploads (guaranteed writable in Linux/Cloud Run environments)
   try {
-    const tmpDir = path.join('/tmp', 'uploads');
+    const tmpDir = path.resolve('/tmp', 'uploads');
     if (!fs.existsSync(tmpDir)) {
       fs.mkdirSync(tmpDir, { recursive: true });
     }
-    fs.writeFileSync(path.join(tmpDir, filename), buffer);
+    const targetPath = path.resolve(tmpDir, safeName);
+    if (targetPath.startsWith(tmpDir + path.sep)) {
+      fs.writeFileSync(targetPath, buffer);
+    }
   } catch (tmpErr) {
     console.warn('Could not write to /tmp/uploads:', tmpErr?.message);
   }
 
   // 2. Attempt write to public/uploads (works in local dev, ignored on EROFS read-only containers)
   try {
-    const publicDir = path.join(process.cwd(), 'public', 'uploads');
+    const publicDir = path.resolve(process.cwd(), 'public', 'uploads');
     if (!fs.existsSync(publicDir)) {
       fs.mkdirSync(publicDir, { recursive: true });
     }
-    fs.writeFileSync(path.join(publicDir, filename), buffer);
+    const targetPath = path.resolve(publicDir, safeName);
+    if (targetPath.startsWith(publicDir + path.sep)) {
+      fs.writeFileSync(targetPath, buffer);
+    }
   } catch {
     // EROFS (Read-only file system) in Cloud Run - safely ignore because /tmp and Firestore handle it
   }
@@ -95,8 +107,8 @@ async function saveToFirestore(filename, buffer, mimeType) {
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
-  if (!(await checkAuth(request))) {
-    return Response.json({ error: 'Unauthorized. Please log in to admin again.' }, { status: 401 });
+  if (!(await isAdminAuthenticated(request))) {
+    return unauthorizedResponse('Unauthorized. Please log in to admin again.');
   }
 
   try {
@@ -108,24 +120,23 @@ export async function POST(request) {
       const rawList = Array.isArray(body.files) ? body.files : (body.file ? [body.file] : []);
 
       for (const item of rawList) {
-        if (!item?.data) continue;
+        if (!item?.data || typeof item.data !== 'string') continue;
         const cleanBase64 = item.data.replace(/^data:image\/[a-z0-9-+.]+;base64,/, '');
         const buffer = Buffer.from(cleanBase64, 'base64');
+        if (buffer.length === 0 || buffer.length > MAX_FILE_BYTES) continue;
+
         const mime = item.type || 'image/jpeg';
-        let ext = path.extname(item.name || '').toLowerCase() || '.webp';
+        const ext = normalizeExtension(path.extname(item.name || ''), mime);
 
         const originalBase = path
-          .basename(item.name || 'image', ext)
+          .basename(item.name || 'image', path.extname(item.name || ''))
           .replace(/[^a-zA-Z0-9-_]/g, '-')
           .toLowerCase()
           .slice(0, 32);
 
         const uniqueName = `${originalBase || 'img'}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}${ext}`;
 
-        // Safe disk save (no EROFS crash)
         safeSaveToDisk(uniqueName, buffer);
-
-        // Firestore persistent cloud save
         await saveToFirestore(uniqueName, buffer, mime);
 
         uploadedUrls.push(`/uploads/${uniqueName}`);
@@ -144,30 +155,20 @@ export async function POST(request) {
         if (!file || typeof file.arrayBuffer !== 'function') continue;
 
         const buffer = Buffer.from(await file.arrayBuffer());
-        const mime = file.type || '';
+        if (buffer.length === 0 || buffer.length > MAX_FILE_BYTES) continue;
 
-        let ext = path.extname(file.name || '').toLowerCase();
-        if (!ext) {
-          if (mime.includes('jpeg') || mime.includes('jpg')) ext = '.jpg';
-          else if (mime.includes('png')) ext = '.png';
-          else if (mime.includes('webp')) ext = '.webp';
-          else if (mime.includes('gif')) ext = '.gif';
-          else if (mime.includes('svg')) ext = '.svg';
-          else ext = '.jpg';
-        }
+        const mime = file.type || '';
+        const ext = normalizeExtension(path.extname(file.name || ''), mime);
 
         const originalBase = path
-          .basename(file.name || 'image', ext)
+          .basename(file.name || 'image', path.extname(file.name || ''))
           .replace(/[^a-zA-Z0-9-_]/g, '-')
           .toLowerCase()
           .slice(0, 32);
 
         const uniqueName = `${originalBase || 'img'}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}${ext}`;
 
-        // Safe disk save (no EROFS crash)
         safeSaveToDisk(uniqueName, buffer);
-
-        // Firestore persistent cloud save
         await saveToFirestore(uniqueName, buffer, mime);
 
         uploadedUrls.push(`/uploads/${uniqueName}`);
@@ -178,12 +179,15 @@ export async function POST(request) {
       return Response.json({ error: 'No valid image files could be processed' }, { status: 400 });
     }
 
-    return Response.json({
-      success: true,
-      urls: uploadedUrls,
-      url: uploadedUrls[0] || null,
-      count: uploadedUrls.length,
-    });
+    return Response.json(
+      {
+        success: true,
+        urls: uploadedUrls,
+        url: uploadedUrls[0] || null,
+        count: uploadedUrls.length,
+      },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
   } catch (err) {
     console.error('File upload failed:', err);
     return Response.json({ error: err.message || 'File upload failed' }, { status: 500 });

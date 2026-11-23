@@ -15,6 +15,7 @@ export default function SiteSettingsEditor({ settings = {}, onSave }) {
 
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const handleRemoveHeroImage = (idx) => {
     setHeroImages(heroImages.filter((_, i) => i !== idx));
@@ -24,6 +25,7 @@ export default function SiteSettingsEditor({ settings = {}, onSave }) {
     e.preventDefault();
     setSaving(true);
     setSavedSuccess(false);
+    setSaveError('');
 
     const payload = {
       heroImages: heroImages.filter(Boolean),
@@ -32,7 +34,11 @@ export default function SiteSettingsEditor({ settings = {}, onSave }) {
     try {
       const res = await fetch('/api/admin/settings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
         body: JSON.stringify(payload),
       });
 
@@ -41,9 +47,12 @@ export default function SiteSettingsEditor({ settings = {}, onSave }) {
         onSave(data);
         setSavedSuccess(true);
         setTimeout(() => setSavedSuccess(false), 3500);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setSaveError(errData.error || 'Failed to save hero slider settings');
       }
     } catch (err) {
-      alert('Failed to save hero slider settings: ' + err.message);
+      setSaveError('Failed to save hero slider settings: ' + err.message);
     } finally {
       setSaving(false);
     }
@@ -51,6 +60,12 @@ export default function SiteSettingsEditor({ settings = {}, onSave }) {
 
   return (
     <form onSubmit={handleSave} className="space-y-6 max-w-4xl select-none">
+      {saveError && (
+        <div className="p-4 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 text-xs font-bold">
+          {saveError}
+        </div>
+      )}
+
       {savedSuccess && (
         <div className="p-4 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4" />
